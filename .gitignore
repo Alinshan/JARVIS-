@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+*.log
+jarvis_debug.log
+.vscode/
+.idea/
+# Exclude user-specific startup scripts
+install_startup.py
+*.lnk
