@@ -66,6 +66,9 @@ python install_startup.py
 
 ---
 
-<p align="center">
-  <i>"Systems are online and ready for your command, Sir."</i>
-</p>
+## ⚖️ License
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## 👤 Developer
+**Alinshan**
+
