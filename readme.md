@@ -57,6 +57,3 @@ python main.py
 
 ## 📜 License
 MIT License - Created by Alinshan
-
----
-*"Welcome home, Sir."*
