@@ -26,8 +26,6 @@ from google import genai
 from google.genai import types
 from ui import JarvisUI
 import numpy as np
-from win10toast import ToastNotifier
-
 import openwakeword
 from openwakeword.model import Model
 from memory.memory_manager import (
@@ -461,7 +459,7 @@ TOOL_DECLARATIONS = [
 
 
 class WakeWordDetector:
-    def __init__(self, wakeword_models=None, threshold=0.42):
+    def __init__(self, wakeword_models=None, threshold=0.15):
         base = get_base_dir()
         if wakeword_models is None:
             wakeword_models = [str(base / "models" / "hey_jarvis_v0.1.onnx")]
@@ -493,7 +491,7 @@ class WakeWordDetector:
 
 
 class ClapDetector:
-    def __init__(self, threshold=12000, min_gap=0.08, max_gap=1.2):
+    def __init__(self, threshold=8000, min_gap=0.08, max_gap=1.5):
         """
         Detects double claps in a stream of audio chunks.
         """
@@ -504,7 +502,12 @@ class ClapDetector:
         self.clap_count     = 0
 
     def process(self, chunk):
-        peak = np.max(np.abs(chunk))
+        peak = np.max(np.abs(chunk.astype(np.int32)))
+        
+        # Optional debug for mic level
+        if peak > 3000 and peak <= self.threshold:
+            print(f"[JARVIS] 🎤 Mic Level Spike: {peak}")
+
         if peak > self.threshold:
             now = time.time()
             gap = now - self.last_clap_time
@@ -530,7 +533,7 @@ class JarvisLive:
         self.ui             = ui
         self.session        = None
         self.audio_in_queue = asyncio.Queue()
-        self.out_queue      = asyncio.Queue(maxsize=15)
+        self.out_queue      = asyncio.Queue()
         self._loop          = None
         self._is_speaking   = False
         self._speaking_lock = threading.Lock()
@@ -544,6 +547,7 @@ class JarvisLive:
         self.active             = False
         self.detector           = WakeWordDetector()
         self.clap_detector      = ClapDetector()
+        self.wake_reason        = None
 
     def _on_text_command(self, text: str):
         if not self._loop:
@@ -758,66 +762,77 @@ class JarvisLive:
         print("[JARVIS] 🎤 Mic started")
         loop = asyncio.get_event_loop()
         
-        # openwakeword buffer
-        ww_buffer = np.array([], dtype=np.int16)
+        while True:
+            if self.ui.muted:
+                await asyncio.sleep(0.5)
+                continue
 
-        def callback(indata, frames, time_info, status):
-            nonlocal ww_buffer
-            
-            with self._speaking_lock:
-                jarvis_speaking = self._is_speaking
-            
-            if not jarvis_speaking and not self.ui.muted:
-                # ── Aktif Mod: Gemini'ye Ses Gönder ───────────────────────────
-                if self.active:
-                    q = self.out_queue
-                    if q is not None:
-                        self.last_audio_time = time.time()
-                        data = indata.tobytes()
-                        loop.call_soon_threadsafe(
-                            q.put_nowait,
-                            {"data": data, "mime_type": "audio/pcm"}
-                        )
-                # ── Pasif Mod: Wake Word Bekle ────────────────────────────────
-                else:
-                    # indata (CHUNK_SIZE, 1) -> flattening it
-                    ww_buffer = np.append(ww_buffer, indata.flatten())
-                    
-                    # openwakeword 1280 örnek bekler
-                    while len(ww_buffer) >= 1280:
-                        chunk = ww_buffer[:1280]
-                        ww_buffer = ww_buffer[1280:]
-                        
-                        detected, name, score = self.detector.predict(chunk)
-                        if detected:
-                            print(f"[JARVIS] ⚡ Wake Word Detected: {name} ({score:.2f})")
-                            loop.call_soon_threadsafe(self.wake_detected.set)
-                        
-                        # ── Clap detection (parallel) ─────────────────────────
-                        if self.clap_detector.process(chunk):
-                            print(f"[JARVIS] 👏 Double-Clap detected!")
-                            loop.call_soon_threadsafe(self.wake_detected.set)
+            # openwakeword buffer
+            ww_buffer = np.array([], dtype=np.int16)
 
-        try:
-            with sd.InputStream(
-                samplerate=SEND_SAMPLE_RATE,
-                channels=CHANNELS,
-                dtype="int16",
-                blocksize=CHUNK_SIZE,
-                callback=callback,
-            ):
-                print("[JARVIS] 🎤 Mic stream open")
-                while True:
-                    await asyncio.sleep(0.5)
-                    # İnaktivite kontrolü (Aktifken)
+            def callback(indata, frames, time_info, status):
+                # Downsample from 48000Hz to 16000Hz (take every 3rd sample)
+                indata_16k = indata[::3]
+                
+                nonlocal ww_buffer
+                
+                with self._speaking_lock:
+                    jarvis_speaking = self._is_speaking
+                
+                if not jarvis_speaking and not self.ui.muted:
+                    # ── Aktif Mod: Gemini'ye Ses Gönder ───────────────────────────
                     if self.active:
-                        if time.time() - self.last_audio_time > self.inactivity_limit:
-                            print("[JARVIS] 💤 Inactivity detected. Going to sleep.")
-                            self.active = False
-                            self.wake_detected.clear()
-        except Exception as e:
-            print(f"[JARVIS] ❌ Mic: {e}")
-            raise
+                        q = self.out_queue
+                        if q is not None:
+                            self.last_audio_time = time.time()
+                            data = indata_16k.tobytes()
+                            loop.call_soon_threadsafe(
+                                q.put_nowait,
+                                {"data": data, "mime_type": "audio/pcm"}
+                            )
+                    # ── Pasif Mod: Wake Word Bekle ────────────────────────────────
+                    else:
+                        # indata_16k -> flattening it
+                        ww_buffer = np.append(ww_buffer, indata_16k.flatten())
+                        
+                        # openwakeword 1280 örnek bekler
+                        while len(ww_buffer) >= 1280:
+                            chunk = ww_buffer[:1280]
+                            ww_buffer = ww_buffer[1280:]
+                            
+                            detected, name, score = self.detector.predict(chunk)
+                            if detected:
+                                print(f"[JARVIS] ⚡ Wake Word Detected: {name} ({score:.2f})")
+                                self.wake_reason = "voice"
+                                loop.call_soon_threadsafe(self.wake_detected.set)
+                            
+                            # ── Clap detection (parallel) ─────────────────────────
+                            if self.clap_detector.process(chunk):
+                                print(f"[JARVIS] 👏 Double-Clap detected!")
+                                self.wake_reason = "clap"
+                                loop.call_soon_threadsafe(self.wake_detected.set)
+
+            try:
+                with sd.InputStream(
+                    samplerate=48000,
+                    channels=CHANNELS,
+                    dtype="int16",
+                    blocksize=CHUNK_SIZE * 3,
+                    callback=callback,
+                ):
+                    print("[JARVIS] 🎤 Mic stream open, device fully locked.")
+                    while not self.ui.muted:
+                        await asyncio.sleep(0.5)
+                        # İnaktivite kontrolü (Aktifken)
+                        if self.active:
+                            if time.time() - self.last_audio_time > self.inactivity_limit:
+                                print("[JARVIS] 💤 Inactivity detected. Going to sleep.")
+                                self.active = False
+                                self.wake_detected.clear()
+                    print("[JARVIS] 🔇 Muted. Microphone hardware released!")
+            except Exception as e:
+                print(f"[JARVIS] ❌ Mic: {e}")
+                await asyncio.sleep(2)
 
     async def _receive_audio(self):
         print("[JARVIS] 👂 Recv started")
@@ -934,7 +949,19 @@ class JarvisLive:
                 # ── Pasif Mod: Wake Word Bekle ────────────────────────────────
                 await self.wake_detected.wait()
                 
+                try:
+                    import winsound
+                    threading.Thread(target=lambda: [winsound.Beep(1800, 80), winsound.Beep(2400, 100)], daemon=True).start()
+                except Exception:
+                    pass
+                
                 print("[JARVIS] 🔥 Waking up. Connecting to Gemini...")
+                
+                # Re-create queues BEFORE setting active=True so we buffer the audio immediately
+                # Usage of unbounded queue ensures no audio is dropped (QueueFull) during the ~2 sec connection phase.
+                self.audio_in_queue = asyncio.Queue()
+                self.out_queue      = asyncio.Queue()
+
                 self.active = True
                 self.ui.set_state("LISTENING")
                 self.ui.write_log("SYS: JARVIS waking up...")
@@ -945,10 +972,6 @@ class JarvisLive:
                 try:
                     async with client.aio.live.connect(model=LIVE_MODEL, config=config) as session:
                         self.session        = session
-                        # Boşalt mevcut kuyrukları (reassign etmek yerine içini boşaltmak daha güvenli olabilir ama burada yeni tane oluşturuyoruz)
-                        # Callback thread'i eski kuyruğa yazıyor olabilir, bu yüzden q referansını callback başında alıyoruz.
-                        self.audio_in_queue = asyncio.Queue()
-                        self.out_queue      = asyncio.Queue(maxsize=15)
 
                         # ── Handle Pending Text Command ───────────────────────
                         if self.pending_text:
@@ -958,7 +981,11 @@ class JarvisLive:
                                 turn_complete=True
                             )
                             self.pending_text = None
-
+                        elif self.wake_reason:
+                            # The user hears the local beep instantly, so no need to force Gemini to say "Yes sir".
+                            # Gemini will now immediately process any spoken audio buffered during the connection time.
+                            self.wake_reason = None
+                        
                         # TaskGroup kullanarak alt taskları yönetiyoruz
                         async with asyncio.TaskGroup() as tg:
                             tg.create_task(self._send_realtime())
@@ -989,24 +1016,15 @@ class JarvisLive:
 
 
 def main():
-    # Setup background logging if running hidden
+    # Setup background logging if running hidden or using pythonw
+    log_file = BASE_DIR / "jarvis_debug.log"
+    sys.stdout = open(log_file, "a", encoding="utf-8", buffering=1)
+    sys.stderr = sys.stdout
+
     if "--hidden" in sys.argv:
-        log_file = BASE_DIR / "jarvis_debug.log"
-        sys.stdout = open(log_file, "a", encoding="utf-8", buffering=1)
-        sys.stderr = sys.stdout
         print(f"\n--- JARVIS Background Session Started: {time.ctime()} ---")
 
-        # Show startup notification
-        try:
-            toaster = ToastNotifier()
-            toaster.show_toast(
-                "JARVIS AI",
-                "Systems online and listening for wake word.",
-                duration=5,
-                threaded=True
-            )
-        except:
-            pass
+
 
     ui = JarvisUI("face.png")
 

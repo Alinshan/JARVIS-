@@ -1,67 +1,62 @@
-<div align="center">
-  <img src="assets/logo.png" alt="JARVIS Logo" width="300">
-  <h1>🤖 J.A.R.V.I.S.</h1>
-  <h3><b>Just A Rather Very Intelligent System</b></h3>
-  <i>“Actually, he’s a highly sophisticated AI prototype.”</i>
-</div>
+# J.A.R.V.I.S - Mark-I 🚀
 
----
+Welcome to J.A.R.V.I.S (Just A Rather Very Intelligent System). This is a professional-grade AI assistant built to operate as a background-first, hands-free companion for Windows.
 
-## 📽️ System Interface
+![JARVIS Interface](assets/working_interface.png)
 
-<p align="center">
-  <img src="assets/working_interface.png" width="800" alt="JARVIS Working Interface">
-</p>
+## 🌟 Key Features
+- **Voice Activation**: Responds to "Hey Jarvis" even when hidden.
+- **Gesture Control**: Double-clap detection for instant wake-up.
+- **Silent operation**: Runs in the background via VBScript without messy terminal windows.
+- **Computer Vision**: Can "see" and analyze your screen to help with tasks.
+- **Global Automation**: Controls your browser, desktop apps, and system settings.
+- **Dynamic UI**: Responsive Stark Industries inspired interface.
 
----
+## 🛠️ Installation
 
-## 🕶️ The Overview
-**JARVIS** isn't just an assistant—he’s your digital co-pilot. Built with a decentralized architecture inspired by the Stark Industries vision, JARVIS is a real-time, voice-activated autonomous intelligence designed to bridge the gap between human thought and digital execution.
+### 1. Prerequisites
+- **Python 3.10 or higher** installed.
+- **Windows OS** (required for background automation features).
+- A working **Microphone**.
 
-Whether you need a full system diagnostics, complex workflow automation, or just a witty conversation while you code, JARVIS is always listening, always learning, and always ready.
-
----
-
-## ⚡ Technical Specifications (Mark-I)
-
-| Feature | Protocol | Description |
-| :--- | :--- | :--- |
-| **Audiovisual Logic** | *Live Perception* | Full-spectrum screen awareness and real-time webcam telemetry. |
-| **Neural Processing** | *Gemini Flash 2.0* | Ultra-low latency cognitive engine for instant decision making. |
-| **System Operations** | *Level 5 Access* | Deep integration with Windows CLI, file systems, and cloud APIs. |
-| **Vocal Interface** | *Natural Synthesis* | Human-grade vocal output with multi-language fluency. |
-| **Memory Core** | *Long-Term Persistence* | Remembers your preferences, projects, and secrets across every boot Cycle. |
-
----
-
-## 🛠️ Activation Commands
-
-> [!IMPORTANT]
-> JARVIS operates in two primary standby modes for maximum tactical flexibility:
-
-*   **Vocal Activation**: Speak *"Hey Jarvis"* to initiate uplink.
-*   **Impulse Trigger**: A **Double-Clap** sequence (Stark Protocol) will instantly wake the system.
-
----
-
-## 🚀 Deployment Instructions
-
+### 2. Setup
+Clone the repository and install dependencies:
 ```bash
-# Clone the repository
 git clone https://github.com/Alinshan/JARVIS-
-
-# Initialize Life-Support systems
+cd JARVIS-
 pip install -r requirements.txt
-playwright install
+playwright install chromium
+```
 
-# Initiate System Link
+### 3. API Configuration
+Create a `.env` file in the root directory and add your Google Gemini API Key:
+```env
+GEMINI_API_KEY=your_key_here
+```
+
+### 4. Enable Startup (Optional)
+To have JARVIS start automatically when you turn on your PC:
+```bash
+python install_startup.py
+```
+
+## 🚀 Usage
+
+### Hidden Background Mode (Recommended)
+Double-click `launcher.vbs`. JARVIS will start silently in your task manager. Just say **"Hey Jarvis"** or **Double-Clap** to bring him to the screen.
+
+### Visual Mode (Developer/Debug)
+Run directly via Python:
+```bash
 python main.py
 ```
 
+## ⌨️ Controls
+- **[F4]**: Quick Mute/Unmute microphone.
+- **[Shutdown]**: Completely kills the background process and releases hardware.
+
+## 📜 License
+MIT License - Created by Alinshan
+
 ---
-
-## ⚖️ License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-Copyright (c) 2026 Alinshan
+*"Welcome home, Sir."*

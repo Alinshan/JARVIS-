@@ -41,7 +41,7 @@ class JarvisUI:
     def __init__(self, face_path, size=None):
         self.root = tk.Tk()
         self.root.title("© Alinshan - J.A.R.V.I.S")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
 
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
@@ -129,6 +129,9 @@ class JarvisUI:
         # ── Mute butonu ───────────────────────────────────────────────────────
         self._build_mute_button()
 
+        # ── Shutdown butonu ───────────────────────────────────────────────────
+        self._build_shutdown_button()
+
         # ── F4 kısayolu ───────────────────────────────────────────────────────
         self.root.bind("<F4>", lambda e: self._toggle_mute())
 
@@ -139,7 +142,57 @@ class JarvisUI:
             self._show_setup_ui()
 
         self._animate()
-        self.root.protocol("WM_DELETE_WINDOW", lambda: os._exit(0))
+        self.root.protocol("WM_DELETE_WINDOW", self._on_window_close)
+        self.root.bind("<Configure>", self._on_resize)
+
+    def _on_resize(self, event):
+        if event.widget == self.root:
+            w = event.width
+            h = event.height
+            
+            # Avoid endless resize loops for sub-pixel jitter or identical triggers
+            if hasattr(self, 'W') and abs(self.W - w) < 2 and abs(self.H - h) < 2:
+                return
+                
+            self.W = w
+            self.H = h
+            self.FCX = w // 2
+            self.FCY = h // 2 - 40
+            
+            # Update background canvas width/height explicitly
+            if hasattr(self, 'bg'):
+                self.bg.config(width=self.W, height=self.H)
+            
+            # Re-position logs dynamically
+            LW = int(w * 0.72)
+            LH = 110
+            LOG_Y = h - LH - 80
+            if hasattr(self, 'log_frame'):
+                self.log_frame.place(x=(w - LW) // 2, y=LOG_Y, width=LW, height=LH)
+                
+            # Re-position input bar dynamically
+            INPUT_Y = LOG_Y + LH + 6
+            BTN_W_INP = 70
+            INP_W = LW - BTN_W_INP - 4
+            x0 = (w - LW) // 2
+            if hasattr(self, '_input_entry'):
+                self._input_entry.place(x=x0, y=INPUT_Y, width=INP_W, height=28)
+            if hasattr(self, '_send_btn'):
+                self._send_btn.place(x=x0 + INP_W + 4, y=INPUT_Y, width=BTN_W_INP, height=28)
+            
+            # Re-position shutdown button dynamically
+            if hasattr(self, '_shutdown_canvas'):
+                BTN_W, BTN_H = 110, 32
+                self._shutdown_canvas.place(x=w - BTN_W - 18, y=h - 70)
+            
+            # Re-position mute button dynamically
+            if hasattr(self, '_mute_canvas'):
+                self._mute_canvas.place(x=18, y=h - 70)
+
+    def _on_window_close(self):
+        """Hides the window to background instead of exiting."""
+        self.set_state("ASLEEP")
+        self.hide_window()
 
     # ── Mute butonu ───────────────────────────────────────────────────────────
 
@@ -186,6 +239,27 @@ class JarvisUI:
         else:
             self.set_state("LISTENING")
             self.write_log("SYS: Microphone active.")
+
+    # ── Shutdown butonu ───────────────────────────────────────────────────────
+
+    def _build_shutdown_button(self):
+        """Sağ alt köşeye tam kapatma butonu yerleştirir."""
+        BTN_W, BTN_H = 110, 32
+        BTN_X = self.W - BTN_W - 18
+        BTN_Y = self.H - 70
+
+        self._shutdown_canvas = tk.Canvas(
+            self.root, width=BTN_W, height=BTN_H,
+            bg=C_BG, highlightthickness=0, cursor="hand2"
+        )
+        self._shutdown_canvas.place(x=BTN_X, y=BTN_Y)
+        self._shutdown_canvas.bind("<Button-1>", lambda e: os._exit(0))
+        
+        c = self._shutdown_canvas
+        c.delete("all")
+        c.create_rectangle(0, 0, BTN_W, BTN_H, outline=C_ACC, fill="#1a0000", width=1)
+        c.create_text(BTN_W//2, BTN_H//2, text="⏻ SHUTDOWN",
+                      fill=C_ACC, font=("Courier", 10, "bold"))
 
     # ── Klavye girişi ─────────────────────────────────────────────────────────
 
@@ -238,17 +312,25 @@ class JarvisUI:
                 daemon=True
             ).start()
 
-    def hide_window(self):
-        """Hides the main JARVIS window."""
+    def _do_hide(self):
         self._is_hidden = True
         self.root.withdraw()
 
-    def show_window(self):
-        """Shows the main JARVIS window."""
+    def hide_window(self):
+        """Hides the main JARVIS window."""
+        self.root.after(0, self._do_hide)
+
+    def _do_show(self):
         self._is_hidden = False
         self.root.deiconify()
+        self.root.lift()
         self.root.attributes("-topmost", True)
         self.root.attributes("-topmost", False)
+        self.root.focus_force()
+
+    def show_window(self):
+        """Shows the main JARVIS window."""
+        self.root.after(0, self._do_show)
 
     # ── Durum yönetimi ────────────────────────────────────────────────────────
 
@@ -589,6 +671,9 @@ class JarvisUI:
     # ── Log ───────────────────────────────────────────────────────────────────
 
     def write_log(self, text: str):
+        self.root.after(0, lambda: self._do_write_log(text))
+
+    def _do_write_log(self, text: str):
         self.typing_queue.append(text)
         tl = text.lower()
         if tl.startswith("you:"):
