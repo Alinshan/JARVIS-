@@ -1,6 +1,6 @@
 <h1 align="center">J.A.R.V.I.S - Mark-I</h1>
 <p align="center">
-  <img src="assets/logo.png" width="200" alt="JARVIS Logo">
+  <img src="assets/logo.png" width="400" alt="JARVIS Logo">
 </p>
 <p align="center">
   <b>Advanced AI Assistant with Voice Activation, Automation, and Computer Vision.</b>
