@@ -2,6 +2,9 @@
 # File management — create, delete, move, rename, list, find, organize
 
 import shutil
+import os
+import subprocess
+import platform
 from pathlib import Path
 from datetime import datetime
 import send2trash
@@ -387,6 +390,24 @@ def get_file_info(path: str) -> str:
     except Exception as e:
         return f"Could not get file info: {e}"
 
+def open_item(path: str) -> str:
+    """Opens a file or folder in the default system application."""
+    try:
+        target = Path(path).expanduser()
+        if not target.exists():
+            return f"Path not found: {path}"
+
+        if platform.system() == "Windows":
+            os.startfile(str(target))
+        elif platform.system() == "Darwin":  # macOS
+            subprocess.run(["open", str(target)], check=True)
+        else:  # Linux
+            subprocess.run(["xdg-open", str(target)], check=True)
+
+        return f"Opened: {target.name}"
+    except Exception as e:
+        return f"Could not open {path}: {e}"
+
 def file_controller(
     parameters: dict,
     response=None,
@@ -469,6 +490,10 @@ def file_controller(
         elif action == "info":
             full = _full_path(path, name)
             result = get_file_info(full)
+
+        elif action == "open":
+            full = _full_path(path, name)
+            result = open_item(full)
 
         else:
             result = f"Unknown action: '{action}'"

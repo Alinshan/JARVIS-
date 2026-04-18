@@ -18,7 +18,11 @@ Welcome to **J.A.R.V.I.S** (Just A Rather Very Intelligent System). Designed as 
 - 👏 **Gesture Wake**: Advanced double-clap detection for silent environments.
 - 👻 **Silent Persistence**: Runs invisibly via VBScript—no terminal windows required.
 - 👁️ **Visual Intelligence**: Real-time screen analysis using Computer Vision.
-- 🛠️ **System Mastery**: Full control over browsers, desktop applications, and settings.
+- **WhatsApp Control**: Send messages or start calls via voice.
+- **Web Browsing**: Smart searching and site navigation.
+- **File Management**: Open any folder or file (movies, docs, folders) instantly.
+- **Media Control**: Full voice control for videos (Play, Pause, Forward, Rewind).
+- **Computer Controls**: Volume, brightness, window management, and system settings.
 - 🎨 **Premium UI**: Dynamic, responsive Stark-tech inspired visual interface.
 
 ## 🛠️ Installation

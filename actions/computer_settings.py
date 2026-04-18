@@ -1,4 +1,4 @@
-﻿# actions/computer_settings.py
+# actions/computer_settings.py
 # JARVIS â€” Computer Settings & UI Controls
 #
 # KullanÄ±cÄ± "sesi aÃ§", "uygulamayÄ± kapat", "tam ekran yap", "ÅŸunu yaz" gibi
@@ -180,6 +180,10 @@ def focus_search():
     else:               pyautogui.hotkey("ctrl", "l")
 
 def pause_video():      pyautogui.press("space")
+def play_video():       pyautogui.press("space")
+def seek_forward():     pyautogui.press("right")
+def seek_backward():    pyautogui.press("left")
+
 def refresh_page():
     if _OS == "Darwin": pyautogui.hotkey("command", "r")
     else:               pyautogui.press("f5")
@@ -405,6 +409,14 @@ ACTION_MAP = {
     "toggle_play":             pause_video,
     "stop_video":              pause_video,
     "resume_video":            pause_video,
+    "seek_forward":            seek_forward,
+    "seek_backward":           seek_backward,
+    "forward_video":           seek_forward,
+    "backward_video":          seek_backward,
+    "fast_forward":            seek_forward,
+    "rewind":                  seek_backward,
+    "next_frame":              seek_forward,
+    "prev_frame":              seek_backward,
     "close_app":               close_app,
     "close_window":            close_window,
     "quit_app":                close_app,
@@ -547,6 +559,11 @@ Examples:
 - "turn off monitor" â†’ {{"action": "sleep_display", "value": null}}
 - "bilgisayarÄ± yeniden baÅŸlat" â†’ {{"action": "restart", "value": null}}
 - "restart the computer" â†’ {{"action": "restart", "value": null}}
+- "forward movie" â†’ {{"action": "seek_forward", "value": null}}
+- "backward movie" â†’ {{"action": "seek_backward", "value": null}}
+- "rewind video" â†’ {{"action": "seek_backward", "value": null}}
+- "play movie" â†’ {{"action": "play", "value": null}}
+- "pause movie" â†’ {{"action": "pause", "value": null}}
 - "bilgisayarÄ± kapat" â†’ {{"action": "shutdown", "value": null}}
 - "shut down" â†’ {{"action": "shutdown", "value": null}}
 - "ekranÄ± kilitle" â†’ {{"action": "lock_screen", "value": null}}
@@ -578,6 +595,10 @@ Examples:
 - "press f5" â†’ {{"action": "press_key", "value": "f5"}}
 - "enter'a bas" â†’ {{"action": "enter", "value": null}}
 - "escape'e bas" â†’ {{"action": "escape", "value": null}}
+- "filmi ilerlet" â†’ {{"action": "seek_forward", "value": null}}
+- "geri sar" â†’ {{"action": "seek_backward", "value": null}}
+- "videoyu baÅŸlat" â†’ {{"action": "play", "value": null}}
+- "duraklat" â†’ {{"action": "pause", "value": null}}
 
 IMPORTANT:
 - Always return one of the available actions listed above.
