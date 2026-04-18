@@ -6,12 +6,7 @@
   <b>Advanced AI Assistant with Voice Activation, Automation, and Computer Vision.</b>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Status-Active-brightgreen" alt="Status">
-  <img src="https://img.shields.io/badge/OS-Windows-blue" alt="OS">
-  <img src="https://img.shields.io/badge/Model-Gemini_Live-orange" alt="Model">
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
-</p>
+>
 
 ---
 
