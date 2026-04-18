@@ -812,27 +812,37 @@ class JarvisLive:
                                 self.wake_reason = "clap"
                                 loop.call_soon_threadsafe(self.wake_detected.set)
 
-            try:
-                with sd.InputStream(
-                    samplerate=48000,
-                    channels=CHANNELS,
-                    dtype="int16",
-                    blocksize=CHUNK_SIZE * 3,
-                    callback=callback,
-                ):
-                    print("[JARVIS] 🎤 Mic stream open, device fully locked.")
-                    while not self.ui.muted:
-                        await asyncio.sleep(0.5)
-                        # İnaktivite kontrolü (Aktifken)
-                        if self.active:
-                            if time.time() - self.last_audio_time > self.inactivity_limit:
-                                print("[JARVIS] 💤 Inactivity detected. Going to sleep.")
-                                self.active = False
-                                self.wake_detected.clear()
-                    print("[JARVIS] 🔇 Muted. Microphone hardware released!")
-            except Exception as e:
-                print(f"[JARVIS] ❌ Mic: {e}")
-                await asyncio.sleep(2)
+            # ── Retry logic for Microphone ──────────────────────────────────────────
+            retry_count = 0
+            max_retries = 5
+            
+            while retry_count < max_retries:
+                try:
+                    with sd.InputStream(
+                        samplerate=48000,
+                        channels=CHANNELS,
+                        dtype="int16",
+                        blocksize=CHUNK_SIZE * 3,
+                        callback=callback,
+                    ):
+                        print("[JARVIS] 🎤 Mic stream open, device fully locked.")
+                        retry_count = 0 # Reset on success
+                        while not self.ui.muted:
+                            await asyncio.sleep(0.5)
+                            # İnaktivite kontrolü (Aktifken)
+                            if self.active:
+                                if time.time() - self.last_audio_time > self.inactivity_limit:
+                                    print("[JARVIS] 💤 Inactivity detected. Going to sleep.")
+                                    self.active = False
+                                    self.wake_detected.clear()
+                        print("[JARVIS] 🔇 Muted. Microphone hardware released!")
+                        break # Exit retry loop if naturally muted
+                except Exception as e:
+                    retry_count += 1
+                    print(f"[JARVIS] ❌ Mic Error (Attempt {retry_count}/{max_retries}): {e}")
+                    if retry_count >= max_retries:
+                        self.ui.write_log(f"ERR: Microphone failure. Please check settings.")
+                    await asyncio.sleep(3)
 
     async def _receive_audio(self):
         print("[JARVIS] 👂 Recv started")
@@ -1021,8 +1031,23 @@ def main():
     sys.stdout = open(log_file, "a", encoding="utf-8", buffering=1)
     sys.stderr = sys.stdout
 
+    # ── Single Instance Lock (TCP Socket) ────────────────────────────────────
+    import socket
+    try:
+        # Create a socket and try to bind it to a local port
+        _lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _lock_socket.bind(("127.0.0.1", 20245))
+        # We don't need to listen, just keep the port bound
+        # This socket will be closed when the process exits
+    except socket.error:
+        print("[JARVIS] ⛔ Another instance is already running. Exiting.")
+        sys.exit(0)
+
     if "--hidden" in sys.argv:
+        # Give Windows a few seconds to settle (drivers, network) at startup
         print(f"\n--- JARVIS Background Session Started: {time.ctime()} ---")
+        print("[JARVIS] ⏳ Initializing with startup delay (7s)...")
+        time.sleep(7)
 
 
 

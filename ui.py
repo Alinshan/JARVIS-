@@ -323,10 +323,12 @@ class JarvisUI:
     def _do_show(self):
         self._is_hidden = False
         self.root.deiconify()
+        self.root.update() # Force update to process deiconify
         self.root.lift()
         self.root.attributes("-topmost", True)
-        self.root.attributes("-topmost", False)
+        self.root.after(100, lambda: self.root.attributes("-topmost", False))
         self.root.focus_force()
+        self.root.after(200, lambda: self.root.focus_force()) # Repeat focus to be sure
 
     def show_window(self):
         """Shows the main JARVIS window."""
@@ -425,7 +427,7 @@ class JarvisUI:
         pspd  = 3.8 if self.speaking else 1.8
         limit = self.FACE_SZ * 0.72
         new_p = [r + pspd for r in self.pulse_r if r + pspd < limit]
-        if len(new_p) < 3 and random.random() < (0.06 if self.speaking else 0.022):
+        if len(new_p) < 3 and random.random() < (0.04 if self.speaking else 0.015):
             new_p.append(0.0)
         self.pulse_r = new_p
 
@@ -437,7 +439,7 @@ class JarvisUI:
             self.status_blink = not self.status_blink
 
         self._draw()
-        self.root.after(16, self._animate)
+        self.root.after(33, self._animate)
 
     # ── Çizim ─────────────────────────────────────────────────────────────────
 
@@ -450,8 +452,8 @@ class JarvisUI:
         FW   = self.FACE_SZ
         c.delete("all")
 
-        # Arka plan Hex Grid
-        hex_s = 52
+        # Arka plan Hex Grid (Optimized density)
+        hex_s = 100
         off = self.hex_offset
         for x in range(-hex_s, W + hex_s, hex_s):
             for y in range(-hex_s, H + hex_s, int(hex_s * 1.5)):
@@ -523,9 +525,9 @@ class JarvisUI:
         t_out = int(FW * 0.495)
         t_in  = int(FW * 0.472)
         a_mk  = self._ac(0, 242, 255, 155)
-        for deg in range(0, 360, 10):
+        for deg in range(0, 360, 30):
             rad = math.radians(deg)
-            inn = t_in if deg % 30 == 0 else t_in + 5
+            inn = t_in if deg % 90 == 0 else t_in + 5
             c.create_line(FCX + t_out * math.cos(rad), FCY - t_out * math.sin(rad),
                           FCX + inn  * math.cos(rad), FCY - inn  * math.sin(rad),
                           fill=a_mk, width=1)
