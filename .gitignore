@@ -8,4 +8,6 @@ jarvis_debug.log
 .idea/
 # Exclude user-specific startup scripts
 install_startup.py
+mic_test.py
+scratch_*.py
 *.lnk
